@@ -21,11 +21,13 @@ CONFIG=debug
 mkdir -p "$OUT"
 
 FRAMEWORKS=()
+BUNDLES=()   # SwiftPM resource bundles; Bundle.module finds them in Contents/Resources
 if swift build -c "$CONFIG" --package-path "$ROOT" --scratch-path "$OUT/spm" --product OpenNotch >"$OUT/spm.log" 2>&1; then
   echo "▸ Built with SwiftPM ($CONFIG)"
   BIN_DIR="$(swift build -c "$CONFIG" --package-path "$ROOT" --scratch-path "$OUT/spm" --show-bin-path)"
   BIN="$BIN_DIR/OpenNotch"
   while IFS= read -r -d '' fw; do FRAMEWORKS+=("$fw"); done < <(find "$BIN_DIR" -maxdepth 1 -name '*.framework' -print0)
+  while IFS= read -r -d '' b; do BUNDLES+=("$b"); done < <(find "$BIN_DIR" -maxdepth 1 -name '*.bundle' -print0)
 else
   echo "▸ SwiftPM unavailable (log: $OUT/spm.log); building with swiftc, without Parakeet"
   SPARKLE_DIR="$("$ROOT/scripts/fetch-sparkle.sh")"
@@ -46,6 +48,7 @@ cp "$BIN" "$APP/Contents/MacOS/OpenNotch"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/"
 for fw in ${FRAMEWORKS[@]+"${FRAMEWORKS[@]}"}; do ditto "$fw" "$APP/Contents/Frameworks/$(basename "$fw")"; done
+for b in ${BUNDLES[@]+"${BUNDLES[@]}"}; do ditto "$b" "$APP/Contents/Resources/$(basename "$b")"; done
 
 # Dev builds sign with OPENNOTCH_SIGN_IDENTITY if set (a stable identity keeps macOS permissions
 # across rebuilds), otherwise ad hoc. Release signing and notarization live in scripts/release.sh.
