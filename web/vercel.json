@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "redirects": [
+    { "source": "/download", "destination": "https://github.com/kjagsadvisors/opennotch/releases/latest", "permanent": false },
+    { "source": "/appcast.xml", "destination": "https://github.com/kjagsadvisors/opennotch/releases/latest/download/appcast.xml", "permanent": false },
+    { "source": "/github", "destination": "https://github.com/kjagsadvisors/opennotch", "permanent": false },
+    { "source": "/pro/monthly", "destination": "https://buy.polar.sh/polar_cl_ZbNWeeM9qqNFFJ9zJJjhsCRw8rHtnsMUMBzam2DfgPa", "permanent": false },
+    { "source": "/pro/yearly", "destination": "https://buy.polar.sh/polar_cl_xmcLe3liTEXisIl1FEe9hL9Gamtf1bZjkso453qQti7", "permanent": false },
+    { "source": "/pro/manage", "destination": "https://polar.sh/rankee-llc/portal", "permanent": false }
+  ]
+}

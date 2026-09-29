@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome to OpenNotch Pro</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/icon.png">
+  <style>
+    :root { --bg: #fff; --bg2: #f5f5f7; --text: #1d1d1f; --muted: #6e6e73; --line: rgba(0,0,0,.08); --accent: #0071e3; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #000; --bg2: #111113; --text: #f5f5f7; --muted: #a1a1a6; --line: rgba(255,255,255,.12); --accent: #2997ff; }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; background: var(--bg);
+           color: var(--text); -webkit-font-smoothing: antialiased; min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; }
+    main { max-width: 560px; text-align: center; }
+    img { width: 88px; height: 88px; filter: drop-shadow(0 10px 24px rgba(0,113,227,.35)); }
+    h1 { font-size: clamp(34px, 6vw, 48px); letter-spacing: -0.02em; margin: 22px 0 10px; }
+    p.lead { color: var(--muted); font-size: 20px; }
+    ol { text-align: left; margin: 36px 0; display: grid; gap: 14px; list-style: none; counter-reset: step; }
+    li { background: var(--bg2); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px 18px 60px; position: relative; font-size: 17px; }
+    li::before { counter-increment: step; content: counter(step); position: absolute; left: 18px; top: 16px; width: 28px; height: 28px;
+                 border-radius: 50%; background: var(--accent); color: #fff; font-weight: 600; display: grid; place-items: center; font-size: 15px; }
+    li small { display: block; color: var(--muted); font-size: 15px; margin-top: 4px; }
+    a.btn { display: inline-block; padding: 13px 26px; border-radius: 980px; background: var(--accent); color: #fff; font-size: 17px; font-weight: 500; text-decoration: none; }
+    a.link { color: var(--accent); text-decoration: none; }
+    .fine { margin-top: 22px; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/icon.png" alt="">
+    <h1>Your free trial has started.</h1>
+    <p class="lead">Seven days of OpenNotch Pro, on us.</p>
+    <ol>
+      <li>Open the email from Polar and copy your license key.
+        <small>It starts with OPENNOTCH. You can also find it on <a class="link" href="/pro/manage">your purchases page</a>.</small></li>
+      <li>Switch back to OpenNotch.
+        <small>It notices the copied key and activates Pro automatically. You can also paste it in Settings → Pro.</small></li>
+    </ol>
+    <a class="btn" href="opennotch://pro">Open OpenNotch</a>
+    <p class="fine">Don't have the app yet? <a class="link" href="/download">Download it</a>. Cancel anytime from <a class="link" href="/pro/manage">Manage subscription</a>.</p>
+  </main>
+</body>
+</html>
