@@ -73,10 +73,23 @@ enum Secrets {
 
     private static let service = "app.opennotch.OpenNotch"
 
+    // Every dictation and command asks for several keys, and a Keychain read can be slow or
+    // prompt, so each one is read once per launch. `set` keeps the cache current.
+    private static let lock = NSLock()
+    private static var cache: [Name: String?] = [:]
+
     static func get(_ name: Name) -> String? {
         for v in name.envVars {
             if let value = ProcessInfo.processInfo.environment[v], !value.isEmpty { return value }
         }
+        lock.lock(); defer { lock.unlock() }
+        if let cached = cache[name] { return cached }
+        let value = read(name)
+        cache.updateValue(value, forKey: name)
+        return value
+    }
+
+    private static func read(_ name: Name) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -99,6 +112,9 @@ enum Secrets {
         ]
         SecItemDelete(base as CFDictionary)
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        lock.lock()
+        cache.updateValue(trimmed.isEmpty ? nil : trimmed, forKey: name)
+        lock.unlock()
         guard !trimmed.isEmpty else { return }
         var add = base
         add[kSecValueData as String] = Data(trimmed.utf8)

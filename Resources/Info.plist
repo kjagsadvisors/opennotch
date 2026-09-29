@@ -42,7 +42,7 @@
 	<key>SUFeedURL</key>
 	<string>https://opennotch.ai/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>REPLACE_WITH_OUTPUT_OF_generate_keys</string>
+	<string>ntv++PyUx67AeX6joxNijP41u0RJm4VQejUbH9GulKk=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUScheduledCheckInterval</key>

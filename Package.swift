@@ -26,5 +26,5 @@ let package = Package(
     ],
     // Swift 5 mode: the app leans on AppKit callbacks and C event taps, where strict
     // concurrency checking costs more ceremony than it buys.
-    swiftLanguageVersions: [.v5]
+    swiftLanguageModes: [.v5]
 )
