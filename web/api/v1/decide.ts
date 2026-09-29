@@ -32,7 +32,7 @@ export async function POST(request: Request): Promise<Response> {
   // The model is pinned here; decisions only, so nothing generative can be run through this route.
   const upstream = await fetch(GATEWAY, {
     method: "POST",
-    headers: { authorization: `Bearer ${process.env.AI_GATEWAY_API_KEY ?? ""}`, "content-type": "application/json" },
+    headers: { authorization: `Bearer ${(process.env.AI_GATEWAY_API_KEY ?? "").trim()}`, "content-type": "application/json" },
     body: JSON.stringify({ model: "typesafe-ai/jev", state: body.state, questions: body.questions }),
   });
   return new Response(upstream.body, { status: upstream.status, headers: { "content-type": "application/json" } });
