@@ -117,7 +117,7 @@ final class AgentLoop {
                     return Outcome(finished: false, summary: "Stopped before clicking \(target.describe).")
                 }
                 await report(step, "Click \(target.describe)")
-                AXUIElementPerformAction(target.ref, kAXPressAction as CFString)
+                AX.perform(UITarget(label: target.describe, element: target.ref, kind: target.editable ? .focus : .press))
                 record("CLICK \(target.describe)")
             case .typeText:
                 guard let target = pick(answers["type_target"], from: editable) else { return Outcome(finished: false, summary: "No field to type into.") }
@@ -195,46 +195,26 @@ final class AgentLoop {
 
     // MARK: - Observation
 
-    /// Indexed table of the focused window's controls. Web content counts too (browsers expose it to AX).
-    static func observe(app: NSRunningApplication?, maxNodes: Int = 5000, keep: Int = 250) -> [Element] {
+    /// Indexed table of the focused window's controls, including the visible links, buttons and
+    /// fields of any web page in it (see AX.targets). Fields show their current text; switches
+    /// show whether they're on.
+    static func observe(app: NSRunningApplication?, keep: Int = 250) -> [Element] {
         guard let app, AX.isTrusted else { return [] }
         let root = AXUIElementCreateApplication(app.processIdentifier)
-        AX.enableElectronAccessibility(root)
+        AX.enableAccessibility(for: app)
         guard let window = AX.element(root, kAXFocusedWindowAttribute) ?? AX.element(root, kAXMainWindowAttribute) else { return [] }
 
-        let editableRoles: Set<String> = ["AXTextField", "AXSearchField", "AXTextArea", "AXComboBox"]
-        let pressRoles: [String: String] = [
-            "AXButton": "button", "AXLink": "link", "AXCheckBox": "checkbox", "AXRadioButton": "option",
-            "AXPopUpButton": "popup", "AXMenuButton": "menu button", "AXTab": "tab", "AXCell": "cell",
-            "AXRow": "row", "AXMenuItem": "menu item", "AXDisclosureTriangle": "disclosure", "AXSwitch": "switch",
-            "AXStaticText": "text", "AXImage": "image",
-        ]
-        let deadline = Date().addingTimeInterval(0.5)
-        var queue = [window]
-        var head = 0
-        var out: [Element] = []
-
-        while head < queue.count, head < maxNodes, out.count < keep, Date() < deadline {
-            let el = queue[head]
-            head += 1
-            queue.append(contentsOf: AX.children(el))
-            guard let role = AX.string(el, kAXRoleAttribute), AX.isEnabled(el) else { continue }
-            let id = "e\(out.count + 1)"
-            if editableRoles.contains(role) {
-                let name = AX.string(el, kAXTitleAttribute) ?? AX.string(el, kAXDescriptionAttribute)
-                    ?? AX.string(el, kAXPlaceholderValueAttribute) ?? "unnamed"
+        return AX.targets(in: window).prefix(keep).enumerated().map { i, target in
+            let el = target.element
+            var d = target.label
+            if target.kind == .focus {
                 let value = (AX.value(el, kAXValueAttribute) as? String).map { $0.count > 40 ? String($0.prefix(40)) + "…" : $0 } ?? ""
-                let kind = role == "AXTextArea" ? "text area" : role == "AXSearchField" ? "search field" : "text field"
-                out.append(Element(id: id, describe: "\(kind) “\(name)”" + (value.isEmpty ? " (empty)" : " = “\(value)”"), ref: el, editable: true))
-            } else if let kind = pressRoles[role], AX.actions(el).contains(kAXPressAction as String), let name = AX.label(for: el) {
-                var d = "\(kind) “\(name)”"
-                if role == "AXCheckBox" || role == "AXRadioButton" || role == "AXSwitch" {
-                    d += ((AX.value(el, kAXValueAttribute) as? NSNumber)?.boolValue ?? false) ? " (on)" : " (off)"
-                }
-                out.append(Element(id: id, describe: d, ref: el, editable: false))
+                d += value.isEmpty ? " (empty)" : " = “\(value)”"
+            } else if let role = AX.string(el, kAXRoleAttribute), ["AXCheckBox", "AXRadioButton", "AXSwitch"].contains(role) {
+                d += ((AX.value(el, kAXValueAttribute) as? NSNumber)?.boolValue ?? false) ? " (on)" : " (off)"
             }
+            return Element(id: "e\(i + 1)", describe: d, ref: el, editable: target.kind == .focus)
         }
-        return out
     }
 }
 

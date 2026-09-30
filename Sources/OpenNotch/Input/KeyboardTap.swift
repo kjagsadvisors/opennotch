@@ -116,7 +116,7 @@ final class KeyboardTap {
         return TriggerKey(rawValue: Pref.string(key)) ?? (mode == .dictation ? .fn : .optionCommand)
     }
 
-    private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+    func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }

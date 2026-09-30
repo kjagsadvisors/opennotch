@@ -19,8 +19,8 @@ enum Intent: String, CaseIterable {
 
     var description: String {
         switch self {
-        case .openApp: return "Open, launch, switch to or bring up an application"
-        case .click: return "Click, press, select, toggle or focus a specific visible button, link, tab, checkbox or field in the current window"
+        case .openApp: return "Open, launch, switch to or bring up an application (only when the thing named is an app)"
+        case .click: return "Click, press, select, toggle or focus something visible in the current window, including opening or going to a section, sidebar item, tab, folder, page, link, message or setting inside the app (e.g. 'open Bluetooth settings', 'go to Downloads', 'click Pricing')"
         case .menu: return "Run a command from the current app's menu bar, like File > Export or View > Show Sidebar"
         case .shortcut: return "A common editing or navigation action: undo, copy, paste, select all, save, new tab, close tab, reload, find, scroll, go back, press enter"
         case .type: return "Type out specific literal text the user dictates, e.g. 'type hello world'"

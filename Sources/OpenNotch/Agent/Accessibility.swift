@@ -24,13 +24,13 @@ struct ScreenContext {
             return ScreenContext(app: app, windowTitle: nil, elements: [], menuItems: [], hasSelection: false)
         }
         let root = AXUIElementCreateApplication(app.processIdentifier)
-        AX.enableElectronAccessibility(root)
+        AX.enableAccessibility(for: app)
         let window: AXUIElement? = AX.element(root, kAXFocusedWindowAttribute) ?? AX.element(root, kAXMainWindowAttribute)
         let title: String? = window.flatMap { AX.string($0, kAXTitleAttribute) }
         return ScreenContext(
             app: app,
             windowTitle: title,
-            elements: window.map { AX.actionableElements(in: $0) } ?? [],
+            elements: window.map { AX.targets(in: $0) } ?? [],
             menuItems: AX.menuItems(of: root),
             hasSelection: !(AX.selectedText() ?? "").isEmpty
         )
@@ -73,19 +73,53 @@ enum AX {
         (value(el, kAXEnabledAttribute) as? Bool) ?? true
     }
 
-    /// Electron apps (Slack, VS Code, Notion…) only expose their UI tree when asked.
-    static func enableElectronAccessibility(_ app: AXUIElement) {
-        AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    /// Chromium browsers and Electron apps (Chrome, Arc, Slack, VS Code, Notion…) only build the
+    /// accessibility tree for their web content once an assistive app asks for it. Done when an app
+    /// comes to the front, so the tree is ready by the time the user finishes talking.
+    static func enableAccessibility(for app: NSRunningApplication) {
+        let root = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetAttributeValue(root, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        if chromiumBrowsers.contains(app.bundleIdentifier ?? "") {
+            AXUIElementSetAttributeValue(root, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+        }
     }
 
+    static let chromiumBrowsers: Set<String> = [
+        "com.google.Chrome", "com.google.Chrome.beta", "com.google.Chrome.canary", "org.chromium.Chromium",
+        "com.brave.Browser", "com.microsoft.edgemac", "company.thebrowser.Browser", "company.thebrowser.dia",
+        "com.operasoftware.Opera", "com.vivaldi.Vivaldi",
+    ]
+
+    /// Presses (or focuses) the element. Web content that ignores the accessibility press gets a
+    /// real mouse click at its center instead.
     @discardableResult
     static func perform(_ target: UITarget) -> Bool {
         switch target.kind {
         case .press:
-            return AXUIElementPerformAction(target.element, kAXPressAction as CFString) == .success
+            if AXUIElementPerformAction(target.element, kAXPressAction as CFString) == .success { return true }
+            return click(target.element)
         case .focus:
-            return AXUIElementSetAttributeValue(target.element, kAXFocusedAttribute as CFString, kCFBooleanTrue) == .success
+            if AXUIElementSetAttributeValue(target.element, kAXFocusedAttribute as CFString, kCFBooleanTrue) == .success { return true }
+            return click(target.element)
         }
+    }
+
+    static func frame(_ el: AXUIElement) -> CGRect? {
+        guard let p = value(el, kAXPositionAttribute), let s = value(el, kAXSizeAttribute) else { return nil }
+        var origin = CGPoint.zero, size = CGSize.zero
+        guard AXValueGetValue(p as! AXValue, .cgPoint, &origin), AXValueGetValue(s as! AXValue, .cgSize, &size),
+              size.width > 0, size.height > 0 else { return nil }
+        return CGRect(origin: origin, size: size)
+    }
+
+    @discardableResult
+    static func click(_ el: AXUIElement) -> Bool {
+        guard let f = frame(el) else { return false }
+        let point = CGPoint(x: f.midX, y: f.midY)
+        for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+            CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+        }
+        return true
     }
 
     static func selectedText() -> String? {
@@ -104,44 +138,93 @@ enum AX {
         "AXTextField": "text field", "AXSearchField": "search field", "AXTextArea": "text area", "AXComboBox": "combo box",
     ]
 
-    /// Breadth-first walk of a window collecting things you could click or type into.
-    /// Bounded by node count and time so a giant web page can't stall the command.
-    static func actionableElements(in window: AXUIElement, maxNodes: Int = 4000, budget: TimeInterval = 0.4) -> [UITarget] {
+    /// Everything you could click or type into in a window: the app's own controls, plus the
+    /// visible links, buttons and fields of any web page in it.
+    static func targets(in window: AXUIElement) -> [UITarget] {
+        var seen: [String: Int] = [:]
+        var webAreas: [AXUIElement] = []
+        var out = actionableElements(in: window, seen: &seen, webAreas: &webAreas)
+        debugLog("web areas: \(webAreas.count)")
+        for area in webAreas.prefix(2) {
+            out += webTargets(in: area, seen: &seen)
+        }
+        return out
+    }
+
+    /// Kept for callers that only want a window walk.
+    static func actionableElements(in window: AXUIElement) -> [UITarget] { targets(in: window) }
+
+    /// Breadth-first walk of the app's own controls. Web pages are handed to `webTargets` instead of
+    /// walked node by node (a page can have thousands). Bounded by node count and time.
+    private static func actionableElements(in window: AXUIElement, seen: inout [String: Int], webAreas: inout [AXUIElement],
+                                           maxNodes: Int = 3000, budget: TimeInterval = 0.35) -> [UITarget] {
         let deadline = Date().addingTimeInterval(budget)
         var queue: [AXUIElement] = [window]
         var head = 0
         var out: [UITarget] = []
-        var seen: [String: Int] = [:]
 
         while head < queue.count, head < maxNodes, Date() < deadline {
             let el = queue[head]
             head += 1
-            queue.append(contentsOf: children(el))
-
             guard let role = string(el, kAXRoleAttribute) else { continue }
-            let kind: UITarget.Kind
-            let roleName: String
-            if let r = focusRoles[role] {
-                kind = .focus
-                roleName = r
-            } else if let r = pressRoles[role], actions(el).contains(kAXPressAction as String) {
-                kind = .press
-                roleName = r
-            } else {
+            if role == "AXWebArea" {
+                webAreas.append(el)
                 continue
             }
-            guard isEnabled(el), let name = label(for: el) else { continue }
-
-            var text = "\(roleName) \"\(name)\""
-            if let n = seen[text] {
-                seen[text] = n + 1
-                text += " #\(n + 1)"
-            } else {
-                seen[text] = 1
-            }
-            out.append(UITarget(label: text, element: el, kind: kind))
+            queue.append(contentsOf: children(el))
+            if let target = target(el, role: role, seen: &seen) { out.append(target) }
         }
         return out
+    }
+
+    /// The visible links, buttons and fields in a web page, in one call: the search API that
+    /// VoiceOver's rotor uses, implemented by Safari (WebKit) and Chromium.
+    private static func webTargets(in area: AXUIElement, seen: inout [String: Int], limit: Int = 250) -> [UITarget] {
+        let keys = ["AXLinkSearchKey", "AXButtonSearchKey", "AXTextFieldSearchKey", "AXCheckBoxSearchKey",
+                    "AXRadioGroupSearchKey", "AXControlSearchKey"]
+        let params: [String: Any] = [
+            "AXSearchKey": keys, "AXVisibleOnly": true, "AXResultsLimit": limit, "AXDirection": "AXDirectionNext",
+        ]
+        var result: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(area, "AXUIElementsForSearchPredicate" as CFString,
+                                                         params as CFDictionary, &result) == .success,
+              let found = result as? [AXUIElement] else { debugLog("web search unavailable"); return [] }
+        debugLog("web search found \(found.count)")
+        return found.compactMap { el in
+            guard let role = string(el, kAXRoleAttribute) else { return nil }
+            return target(el, role: role, seen: &seen, web: true)
+        }
+    }
+
+    private static func target(_ el: AXUIElement, role: String, seen: inout [String: Int], web: Bool = false) -> UITarget? {
+        let kind: UITarget.Kind
+        let roleName: String
+        if let r = focusRoles[role] {
+            kind = .focus
+            roleName = r
+        } else if let r = pressRoles[role], web || actions(el).contains(kAXPressAction as String) {
+            kind = .press
+            roleName = r
+        } else if role == "AXRow" {
+            // Sidebar and list rows (System Settings, Mail, Finder…) select on click, not on AXPress.
+            kind = .press
+            roleName = "row"
+        } else if web {
+            // Web controls with custom roles (e.g. a div acting as a button) still take a click.
+            kind = .press
+            roleName = "control"
+        } else {
+            return nil
+        }
+        guard isEnabled(el), let name = label(for: el) else { return nil }
+        var text = "\(roleName) \"\(name)\""
+        if let n = seen[text] {
+            seen[text] = n + 1
+            text += " #\(n + 1)"
+        } else {
+            seen[text] = 1
+        }
+        return UITarget(label: text, element: el, kind: kind)
     }
 
     static func label(for el: AXUIElement) -> String? {
@@ -152,9 +235,23 @@ enum AX {
             string(el, kAXPlaceholderValueAttribute),
             string(el, kAXHelpAttribute),
         ]
-        guard var s = candidates.compactMap({ $0?.trimmingCharacters(in: .whitespacesAndNewlines) }).first(where: { !$0.isEmpty }) else { return nil }
+        guard var s = candidates.compactMap({ $0?.trimmingCharacters(in: .whitespacesAndNewlines) }).first(where: { !$0.isEmpty })
+                ?? childText(el) else { return nil }
         s = s.replacingOccurrences(of: "\n", with: " ")
         return s.count > 80 ? String(s.prefix(80)) + "…" : s
+    }
+
+    /// Links and buttons on web pages often keep their words in a child text element.
+    private static func childText(_ el: AXUIElement, depth: Int = 0) -> String? {
+        guard depth < 3 else { return nil }
+        for child in children(el).prefix(6) {
+            if let t = (value(child, kAXValueAttribute) as? String) ?? string(child, kAXTitleAttribute) ?? string(child, kAXDescriptionAttribute),
+               !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return t.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            if let t = childText(child, depth: depth + 1) { return t }
+        }
+        return nil
     }
 
     /// Every enabled menu command, labeled by path ("File › New Tab").

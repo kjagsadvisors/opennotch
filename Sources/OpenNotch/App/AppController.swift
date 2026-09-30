@@ -127,13 +127,15 @@ final class AppController: ObservableObject, AgentPresenter {
         }
     }
 
+    /// The event tap delivers on the main run loop, so key events are handled right away and in
+    /// order (a double-tap's release, press and latch must not be reordered).
     private func wireKeys() {
-        keys.onPress = { [weak self] mode in Task { @MainActor in self?.begin(mode) } }
-        keys.onRelease = { [weak self] mode in Task { @MainActor in self?.end(mode) } }
-        keys.onChord = { [weak self] in Task { @MainActor in self?.cancelListening() } }
-        keys.onLatch = { [weak self] _ in Task { @MainActor in self?.notch.handsFree = true } }
-        keys.onEscape = { [weak self] in Task { @MainActor in self?.escape() } }
-        keys.onReturn = { [weak self] in Task { @MainActor in self?.confirmPending() } }
+        keys.onPress = { [weak self] mode in MainActor.assumeIsolated { self?.begin(mode) } }
+        keys.onRelease = { [weak self] mode in MainActor.assumeIsolated { self?.end(mode) } }
+        keys.onChord = { [weak self] in MainActor.assumeIsolated { self?.cancelListening() } }
+        keys.onLatch = { [weak self] _ in MainActor.assumeIsolated { self?.notch.handsFree = true } }
+        keys.onEscape = { [weak self] in MainActor.assumeIsolated { self?.escape() } }
+        keys.onReturn = { [weak self] in MainActor.assumeIsolated { self?.confirmPending() } }
     }
 
     // MARK: - Listening
@@ -200,8 +202,9 @@ final class AppController: ObservableObject, AgentPresenter {
 
     private func end(_ mode: Mode) {
         guard sessionMode == mode, let t = transcriber else { return }
-        // A quick tap isn't a hold-to-talk.
-        if Date().timeIntervalSince(sessionStart) < 0.25 { return cancelListening() }
+        // A quick tap isn't a hold-to-talk, but it may be the first half of a double-tap, so the key
+        // state (which may already hold a hands-free latch from the second tap) is left alone.
+        if Date().timeIntervalSince(sessionStart) < 0.25 { return cancelListening(resetKeys: false) }
 
         recorder.stop()
         let spokenFor = Date().timeIntervalSince(sessionStart)
@@ -242,7 +245,7 @@ final class AppController: ObservableObject, AgentPresenter {
         }
     }
 
-    private func cancelListening() {
+    private func cancelListening(resetKeys: Bool = true) {
         guard sessionMode != nil else { return }
         speculationTask?.cancel()
         recorder.stop()
@@ -252,7 +255,7 @@ final class AppController: ObservableObject, AgentPresenter {
         contextTask?.cancel()
         contextTask = nil
         keys.captureEscape = false
-        keys.resetHold()
+        if resetKeys { keys.resetHold() }
         notch.handsFree = false
         hide()
     }
