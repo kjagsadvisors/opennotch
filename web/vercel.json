@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "redirects": [
-    { "source": "/download", "destination": "https://github.com/kjagsadvisors/opennotch/releases/latest", "permanent": false },
+    { "source": "/download", "destination": "https://github.com/kjagsadvisors/opennotch/releases/latest/download/OpenNotch.dmg", "permanent": false },
     { "source": "/appcast.xml", "destination": "https://github.com/kjagsadvisors/opennotch/releases/latest/download/appcast.xml", "permanent": false },
     { "source": "/github", "destination": "https://github.com/kjagsadvisors/opennotch", "permanent": false },
     { "source": "/pro/monthly", "destination": "https://buy.polar.sh/polar_cl_ZbNWeeM9qqNFFJ9zJJjhsCRw8rHtnsMUMBzam2DfgPa", "permanent": false },
