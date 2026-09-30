@@ -1,6 +1,6 @@
 // Renders the disk image window background (Resources/dmg-background.png and @2x): a title, an
 // arrow from the app to Applications, and the one-line instructions. Icons sit at x=165 and x=495,
-// y=210 (from the top) in a 660×400 window; scripts/dmg-settings.py places them there.
+// y=190 (from the top) in a 660×400 window; scripts/dmg-settings.py places them there.
 // Usage: swiftc scripts/make-dmg-background.swift -o /tmp/make-dmg-bg && /tmp/make-dmg-bg <repo root>
 import AppKit
 
@@ -29,11 +29,15 @@ func render(scale: CGFloat) -> Data {
         let height = str.size().height
         str.draw(in: NSRect(x: 0, y: y(top) - height, width: w, height: height))
     }
-    text("Install OpenNotch", size: 26, weight: .semibold, color: NSColor(white: 0.1, alpha: 1), top: 42)
+    // Everything important sits in the top two-thirds: on macOS 26, Finder draws its toolbar and
+    // path bar inside disk image windows, which covers the bottom of the picture.
+    text("Install OpenNotch", size: 24, weight: .semibold, color: NSColor(white: 0.1, alpha: 1), top: 46)
+    text("Double-click OpenNotch, or drag it to Applications.", size: 14, weight: .regular,
+         color: NSColor(white: 0.35, alpha: 1), top: 80)
 
     // Arrow from the app icon to the Applications folder.
     let accent = NSColor(red: 0.16, green: 0.40, blue: 0.95, alpha: 1)
-    let start = NSPoint(x: 250 * u, y: y(206)), end = NSPoint(x: 410 * u, y: y(206))
+    let start = NSPoint(x: 250 * u, y: y(186)), end = NSPoint(x: 410 * u, y: y(186))
     let shaft = NSBezierPath()
     shaft.move(to: start)
     shaft.line(to: NSPoint(x: end.x - 14 * u, y: end.y))
@@ -49,8 +53,6 @@ func render(scale: CGFloat) -> Data {
     accent.withAlphaComponent(0.85).setFill()
     head.fill()
 
-    text("Drag OpenNotch to Applications", size: 15, weight: .medium, color: NSColor(white: 0.2, alpha: 1), top: 318)
-    text("or just double-click it, and it installs itself.", size: 13, weight: .regular, color: NSColor(white: 0.42, alpha: 1), top: 342)
 
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [.compressionFactor: 1.0])!

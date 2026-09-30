@@ -10,10 +10,10 @@ format = "UDZO"
 files = [app]
 symlinks = {"Applications": "/Applications"}
 
-# Matches scripts/make-dmg-background.swift: icons centred at x=165/495, y=210 in a 660x400 window.
+# Matches scripts/make-dmg-background.swift: icons centred at x=165/495, y=190 in a 660x400 window.
 background = defines["background"]
 window_rect = ((200, 140), (660, 400))
-icon_locations = {name: (165, 210), "Applications": (495, 210)}
+icon_locations = {name: (165, 190), "Applications": (495, 190)}
 icon_size = 112
 text_size = 13
 default_view = "icon-view"
