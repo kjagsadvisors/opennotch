@@ -6,7 +6,7 @@ import Foundation
 /// Where accounts live (Supabase Auth). The publishable key only identifies the project; it's
 /// meant to ship in apps.
 enum AccountConfig {
-    static let supabaseURL = URL(string: "https://nclsnaetdkgtimtvxvho.supabase.co")!
+    static let supabaseURL = URL(string: "https://auth.opennotch.ai")!
     static let publishableKey = "sb_publishable_zArUVkWF7INkpor1v6i6Aw_D9xDFbhv"
     static let callbackScheme = "opennotch"
     static let redirect = "opennotch://auth-callback"

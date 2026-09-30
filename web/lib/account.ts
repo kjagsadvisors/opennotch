@@ -1,7 +1,7 @@
 // OpenNotch accounts (Supabase Auth) and the Pro license each account bought (Polar).
 
 // Public by design: the project URL and publishable key ship in the app too.
-const SUPABASE_URL = process.env.SUPABASE_URL ?? "https://nclsnaetdkgtimtvxvho.supabase.co";
+const SUPABASE_URL = process.env.SUPABASE_URL ?? "https://auth.opennotch.ai";
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY ?? "sb_publishable_zArUVkWF7INkpor1v6i6Aw_D9xDFbhv";
 const POLAR_API = "https://api.polar.sh/v1";
 
