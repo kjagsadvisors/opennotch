@@ -235,6 +235,7 @@ private struct KeyCheckStep: View {
     @State private var dictationKey = TriggerKey.current(.dictation)
     @State private var commandKey = TriggerKey.current(.command)
     @State private var held: Set<TriggerKey> = []
+    @State private var down: Set<Int64> = []
     @State private var changing = false
     @State private var monitor: Any?
 
@@ -283,9 +284,8 @@ private struct KeyCheckStep: View {
         .onChange(of: commandKey) { _, k in UserDefaults.standard.set(k.rawValue, forKey: Pref.commandKey) }
         .onAppear {
             monitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { e in
-                for key in TriggerKey.allCases where Int64(e.keyCode) == key.keyCode {
-                    if e.modifierFlags.contains(key.nsFlag) { held.insert(key) } else { held.remove(key) }
-                }
+                TriggerKey.update(&down, keyCode: Int64(e.keyCode), flags: UInt64(e.modifierFlags.rawValue))
+                held = Set(TriggerKey.allCases.filter { $0.keyCodes.isSubset(of: down) })
                 return e
             }
         }
@@ -310,7 +310,7 @@ private struct KeyCheckStep: View {
 
     private func keyColumn(_ key: TriggerKey, title: String) -> some View {
         VStack(spacing: 14) {
-            Keycap(key, lit: held.contains(key), scale: 1.7)
+            TriggerCaps(key, lit: held.contains(key), scale: 1.7)
             Text(title).font(.headline).foregroundStyle(held.contains(key) ? Color.accentColor : .secondary)
         }
     }
@@ -441,7 +441,7 @@ private struct TryDictationStep: View {
                 Divider()
                 HStack(spacing: 8) {
                     Text("Hold")
-                    Keycap(TriggerKey.current(.dictation), scale: 0.62)
+                    TriggerCaps(TriggerKey.current(.dictation), scale: 0.62)
                     Text("and say, then let go:")
                 }
                 .font(.callout)
@@ -525,7 +525,7 @@ private struct CommandStep: View {
             VStack(alignment: .leading, spacing: 18) {
                 row(1) {
                     Text("Hold")
-                    Keycap(TriggerKey.current(.command), scale: 0.75)
+                    TriggerCaps(TriggerKey.current(.command), scale: 0.75)
                 }
                 row(2) { Text("Say “Open Calculator”") }
                 if app.commandCount > startCount, let last = app.lastCommand {
@@ -894,8 +894,8 @@ private struct DoneStep: View {
                 StepBody("\(Brand.name) lives in your menu bar and your notch.")
             }
             VStack(alignment: .leading, spacing: 14) {
-                shortcut(Keycap(TriggerKey.current(.dictation), scale: 0.7), "Hold to dictate")
-                shortcut(Keycap(TriggerKey.current(.command), scale: 0.7), "Hold to give a command")
+                shortcut(TriggerCaps(TriggerKey.current(.dictation), scale: 0.7), "Hold to dictate")
+                shortcut(TriggerCaps(TriggerKey.current(.command), scale: 0.7), "Hold to give a command")
                 shortcut(Keycap(label: "esc", scale: 0.7), "Cancel")
             }
             .padding(24)
@@ -910,12 +910,15 @@ private struct DoneStep: View {
             .primaryAction()
             .keyboardShortcut(.defaultAction)
         }
-        .onAppear { appeared = true }
+        .onAppear {
+            appeared = true
+            model.turnOnLaunchAtLoginByDefault()
+        }
     }
 
-    private func shortcut(_ cap: Keycap, _ text: String) -> some View {
+    private func shortcut<Cap: View>(_ cap: Cap, _ text: String) -> some View {
         HStack(spacing: 16) {
-            cap.frame(width: 64, alignment: .leading)
+            cap.frame(minWidth: 64, alignment: .leading)
             Text(text).font(.title3)
         }
     }

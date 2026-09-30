@@ -24,7 +24,7 @@ keyCheck|Let'"'"'s check your talk keys. Hold each one down.
 dictationIntro|Dictation. Talk naturally, and I'"'"'ll clean up the ums and the corrections.
 tryDictation|Your turn. Hold the key, read the message out loud, then let go.
 speed|That was a lot faster than typing.
-command|Commands. Hold your command key and tell your Mac what to do.
+command|Commands. Hold the keys on screen, and tell your Mac what to do.
 account|Last step. Create your free account, so Open Notch knows it'"'"'s you.
 paywall|One more thing. Try Pro free for seven days, and I'"'"'ll clean up everything you say.
 done|You'"'"'re all set.'

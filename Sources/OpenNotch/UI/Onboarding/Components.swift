@@ -91,18 +91,10 @@ struct SpeakerToggle: View {
 }
 
 extension TriggerKey {
-    var nsFlag: NSEvent.ModifierFlags {
-        switch self {
-        case .fn: return .function
-        case .rightOption: return .option
-        case .rightCommand: return .command
-        case .rightControl: return .control
-        }
-    }
-
-    var symbol: String {
+    var symbol: String? {
         switch self {
         case .fn: return "globe"
+        case .optionCommand: return nil
         case .rightOption: return "option"
         case .rightCommand: return "command"
         case .rightControl: return "control"
@@ -112,6 +104,7 @@ extension TriggerKey {
     var capLabel: String {
         switch self {
         case .fn: return "fn"
+        case .optionCommand: return "⌥ + ⌘"
         case .rightOption: return "option"
         case .rightCommand: return "command"
         case .rightControl: return "control"
@@ -120,11 +113,36 @@ extension TriggerKey {
 
     static func current(_ mode: Mode) -> TriggerKey {
         let raw = Pref.string(mode == .dictation ? Pref.dictationKey : Pref.commandKey)
-        return TriggerKey(rawValue: raw) ?? (mode == .dictation ? .fn : .rightOption)
+        return TriggerKey(rawValue: raw) ?? (mode == .dictation ? .fn : .optionCommand)
     }
 }
 
 /// A Mac keyboard key, drawn the way the physical key is labeled.
+/// A trigger drawn as the keys you press: one cap, or two with a plus between them.
+struct TriggerCaps: View {
+    let key: TriggerKey
+    var lit = false
+    var scale: CGFloat = 1
+
+    init(_ key: TriggerKey, lit: Bool = false, scale: CGFloat = 1) {
+        self.key = key
+        self.lit = lit
+        self.scale = scale
+    }
+
+    var body: some View {
+        if key == .optionCommand {
+            HStack(spacing: 8 * scale) {
+                Keycap(label: "option", symbol: "option", side: "left", lit: lit, scale: scale)
+                Text("+").font(.system(size: 16 * scale, weight: .medium)).foregroundStyle(.secondary)
+                Keycap(label: "command", symbol: "command", side: "left", lit: lit, scale: scale)
+            }
+        } else {
+            Keycap(key, lit: lit, scale: scale)
+        }
+    }
+}
+
 struct Keycap: View {
     let symbol: String?
     let label: String
@@ -135,14 +153,16 @@ struct Keycap: View {
     init(_ key: TriggerKey, lit: Bool = false, scale: CGFloat = 1) {
         symbol = key.symbol
         label = key.capLabel
-        side = key == .fn ? nil : "right"
+        side = key == .fn ? nil : key == .optionCommand ? "left" : "right"
         self.lit = lit
         self.scale = scale
     }
 
-    init(label: String, symbol: String? = nil, scale: CGFloat = 1) {
+    init(label: String, symbol: String? = nil, side: String? = nil, lit: Bool = false, scale: CGFloat = 1) {
         self.label = label
         self.symbol = symbol
+        self.side = side
+        self.lit = lit
         self.scale = scale
     }
 
@@ -160,7 +180,7 @@ struct Keycap: View {
             }
         }
         .padding(8 * scale)
-        .frame(width: (label.count > 3 ? 86 : 60) * scale, height: 56 * scale)
+        .frame(width: (label.count > 6 ? 104 : label.count > 3 ? 86 : 60) * scale, height: 56 * scale)
         .foregroundStyle(lit ? Color.white : Color.secondary)
         .background {
             RoundedRectangle(cornerRadius: 10 * scale, style: .continuous)

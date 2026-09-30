@@ -202,6 +202,14 @@ final class Onboarding: ObservableObject {
         guide = nil
     }
 
+    /// Opening at login is on by default: the first time the last screen shows, OpenNotch adds
+    /// itself to Login Items. Switching it off there (or later in System Settings) sticks.
+    func turnOnLaunchAtLoginByDefault() {
+        guard !previewMode, !UserDefaults.standard.bool(forKey: "launchAtLoginDefaulted") else { return }
+        UserDefaults.standard.set(true, forKey: "launchAtLoginDefaulted")
+        launchAtLogin = true
+    }
+
     var launchAtLogin: Bool {
         get { SMAppService.mainApp.status == .enabled }
         set {

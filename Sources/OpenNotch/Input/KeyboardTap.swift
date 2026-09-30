@@ -5,36 +5,46 @@ enum Mode: String {
     case dictation, command
 }
 
+/// A hold-to-talk trigger: one modifier, or two held together.
 enum TriggerKey: String, CaseIterable, Identifiable {
-    case fn, rightOption, rightCommand, rightControl
+    case fn, optionCommand, rightOption, rightCommand, rightControl
 
     var id: String { rawValue }
 
-    var keyCode: Int64 {
+    /// Physical keys that must all be down.
+    var keyCodes: Set<Int64> {
         switch self {
-        case .fn: return 63
-        case .rightOption: return 61
-        case .rightCommand: return 54
-        case .rightControl: return 62
-        }
-    }
-
-    var flag: CGEventFlags {
-        switch self {
-        case .fn: return .maskSecondaryFn
-        case .rightOption: return .maskAlternate
-        case .rightCommand: return .maskCommand
-        case .rightControl: return .maskControl
+        case .fn: return [63]
+        case .optionCommand: return [58, 55]   // left Option + left Command
+        case .rightOption: return [61]
+        case .rightCommand: return [54]
+        case .rightControl: return [62]
         }
     }
 
     var label: String {
         switch self {
         case .fn: return "Fn / Globe"
+        case .optionCommand: return "Left Option + Command"
         case .rightOption: return "Right Option"
         case .rightCommand: return "Right Command"
         case .rightControl: return "Right Control"
         }
+    }
+
+    /// Device-dependent modifier bits, so left and right keys can be told apart.
+    static let deviceBits: [Int64: UInt64] = [
+        59: 0x0000_0001, 62: 0x0000_2000,   // left / right Control
+        56: 0x0000_0002, 60: 0x0000_0004,   // left / right Shift
+        55: 0x0000_0008, 54: 0x0000_0010,   // left / right Command
+        58: 0x0000_0020, 61: 0x0000_0040,   // left / right Option
+        63: CGEventFlags.maskSecondaryFn.rawValue,
+    ]
+
+    /// Which physical modifier keys are down, given a flags-changed event for one of them.
+    static func update(_ down: inout Set<Int64>, keyCode: Int64, flags: UInt64) {
+        guard let bit = deviceBits[keyCode] else { return }
+        if flags & bit != 0 { down.insert(keyCode) } else { down.remove(keyCode) }
     }
 }
 
@@ -54,6 +64,9 @@ final class KeyboardTap {
 
     private var tap: CFMachPort?
     private var held: Mode?
+    private var down: Set<Int64> = []
+    /// A two-key trigger waiting a beat, so ⌥⌘ shortcuts (⌥⌘H, ⌥⌘V…) don't flash the notch.
+    private var pendingChord: DispatchWorkItem?
 
     var isRunning: Bool { tap != nil }
 
@@ -79,9 +92,14 @@ final class KeyboardTap {
         return true
     }
 
+    private func cancelPendingChord() {
+        pendingChord?.cancel()
+        pendingChord = nil
+    }
+
     private func trigger(for mode: Mode) -> TriggerKey {
         let key = mode == .dictation ? Pref.dictationKey : Pref.commandKey
-        return TriggerKey(rawValue: Pref.string(key)) ?? (mode == .dictation ? .fn : .rightOption)
+        return TriggerKey(rawValue: Pref.string(key)) ?? (mode == .dictation ? .fn : .optionCommand)
     }
 
     private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
@@ -92,16 +110,31 @@ final class KeyboardTap {
 
         case .flagsChanged:
             let code = event.getIntegerValueField(.keyboardEventKeycode)
+            TriggerKey.update(&down, keyCode: code, flags: event.flags.rawValue)
             for mode in [Mode.dictation, .command] {
                 let key = trigger(for: mode)
-                guard code == key.keyCode else { continue }
-                let down = event.flags.contains(key.flag)
-                if down, held == nil {
-                    held = mode
-                    onPress?(mode)
-                } else if !down, held == mode {
-                    held = nil
-                    onRelease?(mode)
+                let isDown = key.keyCodes.isSubset(of: down)
+                if isDown, held == nil, pendingChord == nil, key.keyCodes.contains(code) {
+                    if key.keyCodes.count == 1 {
+                        held = mode
+                        onPress?(mode)
+                    } else {
+                        let start = DispatchWorkItem { [weak self] in
+                            guard let self, self.pendingChord != nil else { return }
+                            self.pendingChord = nil
+                            guard self.trigger(for: mode).keyCodes.isSubset(of: self.down), self.held == nil else { return }
+                            self.held = mode
+                            self.onPress?(mode)
+                        }
+                        pendingChord = start
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: start)
+                    }
+                } else if !isDown {
+                    if held == mode {
+                        held = nil
+                        onRelease?(mode)
+                    }
+                    if key.keyCodes.contains(code) { cancelPendingChord() }
                 }
             }
             return Unmanaged.passUnretained(event)
@@ -116,6 +149,7 @@ final class KeyboardTap {
                 onReturn?()
                 return nil
             }
+            cancelPendingChord()
             if held != nil {
                 held = nil
                 onChord?()

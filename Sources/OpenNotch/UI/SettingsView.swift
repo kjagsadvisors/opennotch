@@ -16,7 +16,7 @@ struct SettingsView: View {
 
 private struct GeneralTab: View {
     @AppStorage(Pref.dictationKey) private var dictationKey = TriggerKey.fn.rawValue
-    @AppStorage(Pref.commandKey) private var commandKey = TriggerKey.rightOption.rawValue
+    @AppStorage(Pref.commandKey) private var commandKey = TriggerKey.optionCommand.rawValue
     @AppStorage(Pref.polishEnabled) private var polish = true
     @AppStorage(Pref.autoRunConfidence) private var autoRun = 0.8
     @AppStorage(Pref.vocabulary) private var vocabulary = ""

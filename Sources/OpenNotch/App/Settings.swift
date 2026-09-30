@@ -23,7 +23,7 @@ enum Pref {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             dictationKey: TriggerKey.fn.rawValue,
-            commandKey: TriggerKey.rightOption.rawValue,
+            commandKey: TriggerKey.optionCommand.rawValue,
             polishEnabled: true,
             deciderBackend: "auto",
             jevEndpoint: "https://api.typesafe.ai/v1/systemone",
