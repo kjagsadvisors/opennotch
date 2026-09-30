@@ -12,9 +12,18 @@ struct PlannedAction {
     let run: () async throws -> String?
     /// Cheap, reversible head start taken while the user is still talking (e.g. launch the app hidden).
     var prewarm: (() -> Void)? = nil
+    /// Easy to undo (opening an app, a search, a web page), so only a real guess stops to ask.
+    var harmless = false
 
     var needsConfirmation: Bool {
-        risky || confidence < Pref.double(Pref.autoRunConfidence)
+        if risky { return true }
+        return confidence < (harmless ? 0.45 : Pref.double(Pref.autoRunConfidence))
+    }
+
+    func markedHarmless() -> PlannedAction {
+        var copy = self
+        copy.harmless = true
+        return copy
     }
 }
 
@@ -149,6 +158,7 @@ final class Router {
                 return nil
             }
             action.prewarm = { [apps] in apps.prelaunch(name) }
+            action.harmless = true
             return .action(action)
 
         case .click, .menu:
@@ -212,7 +222,7 @@ final class Router {
             return .action(PlannedAction(summary: "Search “\(query)”", detail: nil, icon: "magnifyingglass", confidence: confidence, risky: false) {
                 Executors.search(query)
                 return nil
-            })
+            }.markedHarmless())
 
         case .openURL:
             guard let url = await Extract.url(said) else {
@@ -220,12 +230,12 @@ final class Router {
                 return .action(PlannedAction(summary: "Search “\(query)”", detail: nil, icon: "magnifyingglass", confidence: confidence, risky: false) {
                     Executors.search(query)
                     return nil
-                })
+                }.markedHarmless())
             }
             return .action(PlannedAction(summary: "Go to \(url.host ?? url.absoluteString)", detail: nil, icon: "safari", confidence: confidence, risky: false) {
                 NSWorkspace.shared.open(url)
                 return nil
-            })
+            }.markedHarmless())
 
         case .rewrite:
             guard context.hasSelection else { return .unsure("Select some text first, then ask me to change it.") }

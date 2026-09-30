@@ -127,3 +127,19 @@ final class KeyboardTap {
         }
     }
 }
+
+/// macOS can make the 🌐 (Fn) key open emoji, switch input source or start Apple's dictation.
+/// Any of those fires alongside Fn-to-talk, so onboarding asks people to set it to "Do Nothing".
+enum GlobeKey {
+    static var conflicts: Bool {
+        guard TriggerKey.current(.dictation) == .fn || TriggerKey.current(.command) == .fn else { return false }
+        CFPreferencesAppSynchronize("com.apple.HIToolbox" as CFString)
+        let usage = CFPreferencesCopyAppValue("AppleFnUsageType" as CFString, "com.apple.HIToolbox" as CFString) as? Int
+        // Unset means the default, which opens emoji on current Macs. 0 is "Do Nothing".
+        return usage != 0
+    }
+
+    static func openKeyboardSettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")!)
+    }
+}

@@ -24,6 +24,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
+            // Opened from the disk image: install into Applications and reopen from there.
+            if Installer.moveToApplicationsIfNeeded() {
+                NSApp.terminate(nil)
+                return
+            }
             AppController.shared.bootstrap()
             _ = Updater.shared
             Task {

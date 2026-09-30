@@ -250,6 +250,11 @@ private struct KeyCheckStep: View {
             }
             .padding(.vertical, 8)
 
+            // Re-checked every second so the warning clears as soon as the setting changes.
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                if GlobeKey.conflicts { globeWarning }
+            }
+
             if changing {
                 VStack(spacing: 14) {
                     Picker("Dictate", selection: $dictationKey) { ForEach(TriggerKey.allCases) { Text($0.label).tag($0) } }
@@ -285,6 +290,22 @@ private struct KeyCheckStep: View {
             }
         }
         .onDisappear { if let monitor { NSEvent.removeMonitor(monitor) } }
+    }
+
+    private var globeWarning: some View {
+        HStack(spacing: 14) {
+            Text("🌐").font(.title)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Your 🌐 key also opens emoji").font(.headline)
+                Text("In Keyboard settings, set “Press 🌐 key to” to Do Nothing. Then it only talks to \(Brand.name).")
+                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Button("Open Keyboard Settings") { GlobeKey.openKeyboardSettings() }
+                .buttonStyle(PrimaryGlassButtonStyle(compact: true))
+        }
+        .padding(16)
+        .frame(width: 620)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.orange.opacity(0.12)))
     }
 
     private func keyColumn(_ key: TriggerKey, title: String) -> some View {

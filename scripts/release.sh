@@ -57,12 +57,16 @@ xcrun stapler staple "$APP"
 
 echo "▸ Packaging the DMG"
 DMG="$DIST/OpenNotch-$VERSION.dmg"
-STAGE="$OUT/dmg"
-rm -rf "$STAGE" "$DMG"
-mkdir -p "$STAGE"
-ditto "$APP" "$STAGE/OpenNotch.app"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "OpenNotch" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
+rm -f "$DMG"
+# Finder only honours the window layout (background, hidden toolbar) that dmgbuild >= 1.6.7 writes;
+# it needs Python 3.10+, so prefer Homebrew's over the system 3.9.
+VENV="$OUT/venv"
+if [[ ! -x "$VENV/bin/dmgbuild" ]]; then
+  PY="$(ls /opt/homebrew/bin/python3.1[0-9] /usr/local/bin/python3.1[0-9] 2>/dev/null | tail -1)"
+  "${PY:-python3}" -m venv "$VENV" && "$VENV/bin/pip" install -q "dmgbuild>=1.6.7"
+fi
+"$VENV/bin/dmgbuild" -s "$ROOT/scripts/dmg-settings.py" -D app="$APP" -D background="$ROOT/Resources/dmg-background.png" \
+  "OpenNotch" "$DMG" >/dev/null
 codesign --force --timestamp --sign "$DEVELOPER_ID" "$DMG"
 xcrun notarytool submit "$DMG" "${NOTARY[@]}" --wait
 xcrun stapler staple "$DMG"
