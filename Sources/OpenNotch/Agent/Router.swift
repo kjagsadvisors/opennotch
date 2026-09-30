@@ -14,15 +14,18 @@ struct PlannedAction {
     var prewarm: (() -> Void)? = nil
     /// Easy to undo (opening an app, a search, a web page), so only a real guess stops to ask.
     var harmless = false
+    /// Said out loud when it's done ("Opening Music"), unless the action returns something to say.
+    var spoken: String?
 
     var needsConfirmation: Bool {
         if risky { return true }
         return confidence < (harmless ? 0.3 : Pref.double(Pref.autoRunConfidence))
     }
 
-    func markedHarmless() -> PlannedAction {
+    func markedHarmless(saying spoken: String? = nil) -> PlannedAction {
         var copy = self
         copy.harmless = true
+        copy.spoken = spoken
         return copy
     }
 }
@@ -159,6 +162,7 @@ final class Router {
             }
             action.prewarm = { [apps] in apps.prelaunch(name) }
             action.harmless = true
+            action.spoken = "Opening \(name)."
             return .action(action)
 
         case .click, .menu:
@@ -199,10 +203,11 @@ final class Router {
 
         case .system:
             guard let (id, conf) = pick("system"), let action = SystemAction(rawValue: id) else { return .unsure("I don't know that setting.") }
-            return .action(PlannedAction(summary: action.summary, detail: nil, icon: "gearshape", confidence: min(confidence, conf), risky: false) {
+            var planned = PlannedAction(summary: action.summary, detail: nil, icon: "gearshape", confidence: min(confidence, conf), risky: false) {
                 try action.run()
-                return nil
-            })
+            }
+            planned.spoken = action.spoken
+            return .action(planned)
 
         case .type:
             let text = await Extract.textToType(said)
@@ -222,7 +227,7 @@ final class Router {
             return .action(PlannedAction(summary: "Search “\(query)”", detail: nil, icon: "magnifyingglass", confidence: confidence, risky: false) {
                 Executors.search(query)
                 return nil
-            }.markedHarmless())
+            }.markedHarmless(saying: "Searching for \(query)."))
 
         case .openURL:
             guard let url = await Extract.url(said) else {
@@ -230,12 +235,12 @@ final class Router {
                 return .action(PlannedAction(summary: "Search “\(query)”", detail: nil, icon: "magnifyingglass", confidence: confidence, risky: false) {
                     Executors.search(query)
                     return nil
-                }.markedHarmless())
+                }.markedHarmless(saying: "Searching for \(query)."))
             }
             return .action(PlannedAction(summary: "Go to \(url.host ?? url.absoluteString)", detail: nil, icon: "safari", confidence: confidence, risky: false) {
                 NSWorkspace.shared.open(url)
                 return nil
-            }.markedHarmless())
+            }.markedHarmless(saying: "Opening \(url.host ?? "that page")."))
 
         case .rewrite:
             guard context.hasSelection else { return .unsure("Select some text first, then ask me to change it.") }

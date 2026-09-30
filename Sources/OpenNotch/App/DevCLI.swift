@@ -13,7 +13,7 @@ enum DevCLI {
         let flag = args[1]
         let rest = args.dropFirst(2).joined(separator: " ")
         if flag == "--preview-onboarding" { return previewOnboarding(rest) }
-        guard ["--transcribe", "--polish", "--route", "--say", "--agent-step"].contains(flag) else { return false }
+        guard ["--transcribe", "--polish", "--route", "--say", "--agent-step", "--speak"].contains(flag) else { return false }
 
         Pref.registerDefaults()
         let done = DispatchSemaphore(value: 0)
@@ -25,6 +25,7 @@ enum DevCLI {
                 case "--route": try await route(rest)
                 case "--say": try await say(rest)
                 case "--agent-step": try await agentStep(rest)
+                case "--speak": try await speak(rest)
                 default: break
                 }
             } catch {
@@ -68,6 +69,22 @@ enum DevCLI {
             print("loading Parakeet (first run downloads the model)…")
             await Speech.prepareParakeet()
         }
+    }
+
+    /// Synthesizes a spoken reply with the Kokoro voice and writes it to /tmp/opennotch-speak.wav.
+    private static func speak(_ text: String) async throws {
+        #if canImport(FluidAudio)
+        let t0 = Date()
+        try await KokoroVoice.shared.prepare()
+        print("voice ready (\(ms(since: t0)))")
+        let t1 = Date()
+        guard let wav = try await KokoroVoice.shared.wav(text) else { return print("voice not ready") }
+        let url = URL(fileURLWithPath: "/tmp/opennotch-speak.wav")
+        try wav.write(to: url)
+        print("spoke \(wav.count / 48_000 * 10 / 10)s of audio in \(ms(since: t1)) → \(url.path)")
+        #else
+        print("Built without FluidAudio")
+        #endif
     }
 
     private static func ms(since t: Date) -> String { String(format: "%.0f ms", Date().timeIntervalSince(t) * 1000) }

@@ -21,6 +21,7 @@ private struct GeneralTab: View {
     @AppStorage(Pref.autoRunConfidence) private var autoRun = 0.4
     @AppStorage(Pref.vocabulary) private var vocabulary = ""
     @AppStorage(Pref.searchURL) private var searchURL = "https://www.google.com/search?q=%s"
+    @AppStorage(Pref.speakReplies) private var speakReplies = true
 
     @ObservedObject private var account = Account.shared
 
@@ -51,6 +52,7 @@ private struct GeneralTab: View {
             }
             UpdatesSection()
             Section("Commands") {
+                Toggle("Say replies out loud", isOn: $speakReplies)
                 Slider(value: $autoRun, in: 0.2...1.0, step: 0.05) {
                     Text("Ask before running below \(Int(autoRun * 100))% confidence")
                 }

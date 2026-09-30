@@ -19,6 +19,7 @@ enum Pref {
     static let speechEngine = "speechEngine"          // parakeet | apple
     static let parakeetModel = "parakeetModel"        // ultra | v3 | redux
     static let cleanupProvider = "cleanupProvider"    // rules | groq | cerebras | anthropic | openai | apple
+    static let speakReplies = "speakReplies"
 
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
@@ -37,6 +38,7 @@ enum Pref {
             searchURL: "https://www.google.com/search?q=%s",
             parakeetModel: "ultra",
             cleanupProvider: "auto",
+            speakReplies: true,
         ])
     }
 

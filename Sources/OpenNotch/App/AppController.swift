@@ -159,6 +159,7 @@ final class AppController: ObservableObject, AgentPresenter {
         }
 
         Onboarding.shared.stopNarration()
+        Voice.stop()
         sessionMode = mode
         sessionStart = Date()
         targetApp = NSWorkspace.shared.frontmostApplication
@@ -367,6 +368,9 @@ final class AppController: ObservableObject, AgentPresenter {
             let message = try await action.run()
             lastCommand = action.summary
             commandCount += 1
+            // Talk back like an assistant: the result if it's short (an answer, what's playing),
+            // otherwise a quick "Opening Music".
+            Voice.say(message.flatMap { $0.count <= 280 ? $0 : nil } ?? action.spoken)
             if let message {
                 flash(action.summary, detail: message, icon: action.icon, seconds: max(6, Double(message.count) / 15))
             } else {

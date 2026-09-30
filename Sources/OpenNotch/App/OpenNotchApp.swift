@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             AppController.shared.bootstrap()
             _ = Updater.shared
+            Voice.prepare()
             Task {
                 await Pro.shared.refresh()
                 await Account.shared.linkPro()

@@ -99,9 +99,14 @@ enum SystemAction: String, CaseIterable {
     case volumeUp = "volume_up", volumeDown = "volume_down", mute = "toggle_mute"
     case darkMode = "toggle_dark_mode", lockScreen = "lock_screen", sleepDisplay = "sleep_display"
     case screenshot, screenshotRegion = "screenshot_region", missionControl = "mission_control"
+    case playMusic = "play_music", pauseMusic = "pause_music", nextTrack = "next_track", previousTrack = "previous_track"
 
     var description: String {
         switch self {
+        case .playMusic: return "Play music, or resume whatever was playing"
+        case .pauseMusic: return "Pause the music or audio that's playing"
+        case .nextTrack: return "Skip to the next song"
+        case .previousTrack: return "Go back to the previous song"
         case .volumeUp: return "Turn the volume up"
         case .volumeDown: return "Turn the volume down"
         case .mute: return "Mute or unmute sound"
@@ -116,8 +121,25 @@ enum SystemAction: String, CaseIterable {
 
     var summary: String { description }
 
-    func run() throws {
+    /// What the assistant says when it's done, if the action doesn't report something better.
+    var spoken: String? {
         switch self {
+        case .volumeUp: return "Turning it up."
+        case .volumeDown: return "Turning it down."
+        case .darkMode: return "Switching the look."
+        case .pauseMusic: return "Paused."
+        case .screenshot, .screenshotRegion: return "Got it."
+        default: return nil
+        }
+    }
+
+    /// Runs the action; media actions return what's now playing ("Playing Purple Rain by Prince").
+    func run() throws -> String? {
+        switch self {
+        case .playMusic: return try MediaPlayer.play()
+        case .pauseMusic: try MediaPlayer.tell("pause"); return nil
+        case .nextTrack: return try MediaPlayer.nowPlaying(after: "next track")
+        case .previousTrack: return try MediaPlayer.nowPlaying(after: "previous track")
         case .volumeUp: try osa("set volume output volume ((output volume of (get volume settings)) + 12)")
         case .volumeDown: try osa("set volume output volume ((output volume of (get volume settings)) - 12)")
         case .mute: try osa("set volume output muted not (output muted of (get volume settings))")
@@ -132,6 +154,7 @@ enum SystemAction: String, CaseIterable {
         case .screenshotRegion: Keys.press(21, [.maskCommand, .maskShift])
         case .missionControl: Keys.press(126, .maskControl)
         }
+        return nil
     }
 
     private func osa(_ source: String) throws {
@@ -143,6 +166,45 @@ enum SystemAction: String, CaseIterable {
     static var question: Question {
         .choice("Which system action matches what the user asked for? Pick none if none fits.",
                 allCases.map { ($0.rawValue, $0.description) } + [("none", "None of these")])
+    }
+}
+
+/// Spotify if it's open, otherwise Apple Music. Asks the player what's on so the assistant can say it.
+enum MediaPlayer {
+    static var app: String {
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == "com.spotify.client" } ? "Spotify" : "Music"
+    }
+
+    static func play() throws -> String? {
+        let start = app == "Music"
+            ? "if player state is paused then\n play\n else if player state is not playing then\n set shuffle enabled to true\n play library playlist 1\n end if"
+            : "play"
+        return try nowPlaying(after: start)
+    }
+
+    static func tell(_ command: String) throws {
+        _ = try osa("tell application \"\(app)\" to \(command)")
+    }
+
+    static func nowPlaying(after command: String) throws -> String? {
+        let out = try osa("""
+        tell application "\(app)"
+            \(command)
+            delay 0.7
+            if player state is playing then return (name of current track) & tab & (artist of current track)
+        end tell
+        return ""
+        """)
+        let parts = out.split(separator: "\t", maxSplits: 1).map(String.init)
+        guard let song = parts.first, !song.isEmpty else { return nil }
+        return parts.count > 1 && !parts[1].isEmpty ? "Playing \(song) by \(parts[1])." : "Playing \(song)."
+    }
+
+    private static func osa(_ source: String) throws -> String {
+        var err: NSDictionary?
+        let result = NSAppleScript(source: source)?.executeAndReturnError(&err)
+        if let err { throw NSError(domain: "AppleScript", code: 1, userInfo: [NSLocalizedDescriptionKey: "\(err[NSAppleScript.errorMessage] ?? err)"]) }
+        return result?.stringValue ?? ""
     }
 }
 
