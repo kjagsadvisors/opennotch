@@ -56,6 +56,12 @@ xcrun notarytool submit "$OUT/OpenNotch-notarize.zip" "${NOTARY[@]}" --wait
 xcrun stapler staple "$APP"
 
 echo "▸ Packaging the DMG"
+# dmgbuild mounts the image as /Volumes/OpenNotch; if that name is taken it mounts as "OpenNotch 1"
+# and the window background silently breaks.
+if ls -d /Volumes/OpenNotch* >/dev/null 2>&1; then
+  echo "An OpenNotch disk image is mounted. Eject it (Finder sidebar) and run again." >&2
+  exit 1
+fi
 DMG="$DIST/OpenNotch-$VERSION.dmg"
 rm -f "$DMG"
 # Finder only honours the window layout (background, hidden toolbar) that dmgbuild >= 1.6.7 writes;
