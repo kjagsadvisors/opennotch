@@ -55,7 +55,7 @@ enum Pref {
 /// API keys. Environment variables win so the dev CLI works without touching the Keychain.
 enum Secrets {
     enum Name: String, CaseIterable {
-        case jev, aiGateway, anthropic, openai, groq, cerebras, proLicense, proActivation
+        case jev, aiGateway, anthropic, openai, groq, cerebras, proLicense, proActivation, accountRefresh
 
         var envVars: [String] {
             switch self {
@@ -66,7 +66,7 @@ enum Secrets {
             case .groq: return ["GROQ_API_KEY"]
             case .cerebras: return ["CEREBRAS_API_KEY"]
             case .proLicense: return ["OPENNOTCH_LICENSE_KEY"]
-            case .proActivation: return []
+            case .proActivation, .accountRefresh: return []
             }
         }
     }

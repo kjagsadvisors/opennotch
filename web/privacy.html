@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy · OpenNotch</title>
+  <link rel="icon" href="/icon.png">
+  <style>
+    :root { --bg: #fff; --text: #1d1d1f; --muted: #6e6e73; --line: rgba(0,0,0,.08); --accent: #0071e3; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #000; --text: #f5f5f7; --muted: #a1a1a6; --line: rgba(255,255,255,.12); --accent: #2997ff; }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background: var(--bg);
+           color: var(--text); -webkit-font-smoothing: antialiased; padding: 56px 20px 80px; line-height: 1.55; }
+    main { max-width: 680px; margin: 0 auto; }
+    a { color: var(--accent); text-decoration: none; }
+    .home { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; color: var(--text); margin-bottom: 40px; }
+    .home img { width: 28px; height: 28px; }
+    h1 { font-size: clamp(32px, 6vw, 44px); letter-spacing: -0.02em; line-height: 1.1; }
+    .updated { color: var(--muted); margin: 10px 0 36px; }
+    h2 { font-size: 21px; margin: 34px 0 8px; letter-spacing: -0.01em; }
+    p, li { font-size: 17px; }
+    p + p { margin-top: 10px; }
+    ul { margin: 8px 0 0 22px; display: grid; gap: 6px; }
+    footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="home" href="/"><img src="/icon.png" alt="">OpenNotch</a>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated September 30, 2026</p>
+
+    <p>OpenNotch turns your voice into text and actions on your Mac. This page explains what leaves your Mac, where it goes, and why. The short version: your audio never leaves your Mac, and we don't sell or share your data for advertising.</p>
+
+    <h2>Your voice</h2>
+    <p>Speech is turned into text on your Mac, using Parakeet or Apple's on-device speech engine. Audio is never uploaded, and it isn't saved after a dictation ends.</p>
+
+    <h2>Text we send to AI models</h2>
+    <p>Some features send text (not audio) to an AI model:</p>
+    <ul>
+      <li><b>Dictation cleanup</b> sends the transcript, the name of the app you're typing into, and your custom words to Anthropic's Claude.</li>
+      <li><b>Commands</b> send what you said, plus the names of your apps and the labels of buttons and fields on screen, to a decision model (Jev, by TypeSafe, through Vercel's AI Gateway). Multi-step commands can also include text visible in those fields.</li>
+      <li><b>Form filling</b> sends the text you copied and the form's field labels to Claude.</li>
+    </ul>
+    <p>With OpenNotch Pro, these requests pass through our server at opennotch.ai, which checks your subscription and forwards them. We don't store their contents. If you use your own API keys instead, requests go straight from your Mac to that provider under your agreement with them. You can turn cleanup off, or run it with rules only, in Settings.</p>
+
+    <h2>Your account</h2>
+    <p>When you sign in, we store your email address and the sign-in method you used (Apple, Google, GitHub or email) with our authentication provider, Supabase. We use your email to sign you in, to connect your account to your Pro subscription, and to send account and billing messages.</p>
+
+    <h2>Payments</h2>
+    <p>Pro is sold by Polar, which acts as the merchant of record. Polar handles your payment details; we never see your card number. Polar tells us your email, your subscription status and your license key.</p>
+
+    <h2>What stays on your Mac</h2>
+    <p>Your settings, custom words, usage counters and API keys stay on your Mac. Keys are kept in the macOS Keychain.</p>
+
+    <h2>Updates and the website</h2>
+    <p>The app checks opennotch.ai once a day for updates. It doesn't send any information about your Mac. Our website and server are hosted by Vercel, which keeps standard request logs such as IP addresses for a limited time.</p>
+
+    <h2>Your choices</h2>
+    <p>You can sign out at any time in Settings. To delete your account and the data tied to it, contact us and we'll do it within 30 days. Subscriptions can be cancelled from <a href="/pro/manage">Manage subscription</a>.</p>
+
+    <h2>Children</h2>
+    <p>OpenNotch isn't directed to children under 13, and we don't knowingly collect their information.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes in a way that matters, we'll update this page and tell you in the app or by email.</p>
+    <footer>OpenNotch is made by Rankee LLC. The app is open source under the MIT license at
+      <a href="/github">github.com/kjagsadvisors/opennotch</a>. Questions: open an issue there.
+      · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer>
+  </main>
+</body>
+</html>

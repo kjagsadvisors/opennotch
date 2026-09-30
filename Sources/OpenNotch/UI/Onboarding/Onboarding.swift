@@ -17,7 +17,7 @@ final class Onboarding: ObservableObject {
     enum IntroPhase { case splash, name, greeting }
 
     enum Step: Int, CaseIterable {
-        case permissions, keyCheck, dictationIntro, tryDictation, speed, command, paywall, done
+        case permissions, keyCheck, dictationIntro, tryDictation, speed, command, account, paywall, done
     }
 
     @Published var introPhase: IntroPhase = .splash
@@ -38,6 +38,9 @@ final class Onboarding: ObservableObject {
     private let synth = AVSpeechSynthesizer()
 
     static var isComplete: Bool { UserDefaults.standard.bool(forKey: "onboardingComplete") }
+
+    /// While onboarding is up, people can try everything before they've made an account.
+    var isOpen: Bool { overlay != nil || window?.isVisible == true }
 
     private init() {
         UserDefaults.standard.register(defaults: ["narrationOn": true])
@@ -140,15 +143,23 @@ final class Onboarding: ObservableObject {
         var target = Step(rawValue: step.rawValue + 1) ?? .done
         // No measurement, no speed screen.
         if target == .speed, AppController.shared.lastDictation == nil { target = .command }
+        if target == .account, Account.isSignedIn { target = .paywall }
         step = target
         announce()
     }
 
     func back() {
         var target = Step(rawValue: step.rawValue - 1) ?? .permissions
+        if target == .account, Account.isSignedIn { target = .command }
         if target == .speed, AppController.shared.lastDictation == nil { target = .tryDictation }
         step = target
         announce()
+    }
+
+    /// Jumps straight to sign-in (for someone who finished an older onboarding without an account).
+    func showAccount() {
+        step = .account
+        showWindow()
     }
 
     func finish() {
@@ -214,6 +225,7 @@ final class Onboarding: ObservableObject {
         case .speed:
             if let m = AppController.shared.lastDictation?.speedup { say("You just spoke \(m) times faster than typing.") }
         case .command: say("Commands. Hold the right option key and tell your Mac what to do.")
+        case .account: say("Last step. Create your free account so \(Brand.name) knows it's you.")
         case .paywall: say("One more thing. Try Pro free for seven days, and I'll clean up everything you say.")
         case .done: say("You're all set, \(displayName).")
         }

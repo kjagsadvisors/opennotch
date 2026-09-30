@@ -46,6 +46,7 @@ struct OnboardingView: View {
         case .tryDictation: TryDictationStep(model: model)
         case .speed: SpeedStep(model: model)
         case .command: CommandStep(model: model)
+        case .account: AccountStep(model: model)
         case .paywall: PaywallStep(model: model)
         case .done: DoneStep(model: model)
         }
@@ -539,6 +540,146 @@ private struct CommandStep: View {
     }
 }
 
+// MARK: - Account
+
+/// Sign-in comes after people have felt the product, right before the Pro offer. It's required,
+/// so there's no skip; the account is what Pro attaches to.
+private struct AccountStep: View {
+    @ObservedObject var model: Onboarding
+    @ObservedObject private var account = Account.shared
+    @State private var email = ""
+    @State private var code = ""
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 56) {
+            VStack(alignment: .leading, spacing: 14) {
+                if let signedIn = account.email {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 48)).foregroundStyle(.green)
+                    StepTitle("You're in.")
+                    StepBody("Signed in as \(signedIn).")
+                } else {
+                    StepTitle("Create your free account")
+                    StepBody("One account for every Mac you use \(Brand.name) on.")
+                        .padding(.bottom, 6)
+                    ForEach(Account.Provider.allCases) { provider in
+                        providerButton(provider)
+                    }
+                    divider
+                    if case .emailSent(let sentTo) = account.status { codeEntry(sentTo) } else { emailEntry }
+                    if account.status == .working { ProgressView().controlSize(.small) }
+                    if case .problem(let message) = account.status {
+                        Text(message).font(.callout).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                    }
+                    legal
+                }
+            }
+            .frame(width: 420)
+
+            reasons.frame(maxWidth: .infinity)
+        }
+        .animation(.smooth, value: account.status)
+        .onChange(of: account.status) { _, s in
+            if case .signedIn = s { DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { model.next() } }
+        }
+    }
+
+    private func providerButton(_ provider: Account.Provider) -> some View {
+        let isApple = provider == .apple
+        return Button { account.signIn(with: provider) } label: {
+            HStack(spacing: 8) {
+                if isApple { Image(systemName: "apple.logo") }
+                Text(provider.title)
+            }
+            .font(.body.weight(.semibold))
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .foregroundStyle(isApple ? Color(nsColor: .windowBackgroundColor) : Color.primary)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(isApple ? Color.primary : Color(nsColor: .controlBackgroundColor)))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.primary.opacity(isApple ? 0 : 0.15)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(account.status == .working)
+    }
+
+    private var divider: some View {
+        HStack(spacing: 10) {
+            Rectangle().fill(.quaternary).frame(height: 1)
+            Text("or").font(.callout).foregroundStyle(.secondary)
+            Rectangle().fill(.quaternary).frame(height: 1)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var emailEntry: some View {
+        HStack(spacing: 8) {
+            TextField("you@example.com", text: $email)
+                .textFieldStyle(.roundedBorder)
+                .textContentType(.emailAddress)
+                .onSubmit { Task { await account.sendEmail(to: email) } }
+            Button("Email me a link") { Task { await account.sendEmail(to: email) } }
+                .buttonStyle(PrimaryGlassButtonStyle(compact: true))
+                .disabled(!email.contains("@") || account.status == .working)
+        }
+    }
+
+    private func codeEntry(_ sentTo: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Check \(sentTo). Click the link, or type the 6-digit code here.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                TextField("123456", text: $code)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.oneTimeCode)
+                    .onSubmit { Task { await account.verify(code: code, email: sentTo) } }
+                    .onChange(of: code) { _, v in
+                        if v.filter(\.isNumber).count == 6 { Task { await account.verify(code: v, email: sentTo) } }
+                    }
+                Button("Verify") { Task { await account.verify(code: code, email: sentTo) } }
+                    .buttonStyle(PrimaryGlassButtonStyle(compact: true))
+                    .disabled(code.filter(\.isNumber).count < 6)
+            }
+            HStack {
+                Button("Send a new email") { Task { await account.sendEmail(to: sentTo) } }
+                Spacer()
+                Button("Use a different email") { email = ""; code = ""; account.signOut() }
+            }
+            .buttonStyle(.plain).font(.callout).foregroundStyle(.secondary)
+        }
+    }
+
+    private var legal: some View {
+        HStack(spacing: 4) {
+            Text("By continuing you agree to the").foregroundStyle(.secondary)
+            Link("Terms", destination: AccountConfig.terms)
+            Text("and").foregroundStyle(.secondary)
+            Link("Privacy Policy", destination: AccountConfig.privacy)
+        }
+        .font(.caption)
+        .padding(.top, 4)
+    }
+
+    private var reasons: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Your account").font(.headline).foregroundStyle(.secondary)
+            reason("waveform.badge.mic", "Your voice stays on this Mac", "Speech becomes text on your Mac. Audio is never uploaded.")
+            reason("sparkles", "Pro follows you", "Upgrade once and Pro turns on by itself on each Mac you sign in to.")
+            reason("key.slash", "No passwords", "Apple, Google, GitHub, or a link in your email.")
+        }
+        .padding(28)
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(.background.secondary))
+    }
+
+    private func reason(_ icon: String, _ title: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon).font(.title3).foregroundStyle(Color.accentColor).frame(width: 26)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.headline)
+                Text(text).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
 // MARK: - Models
 
 /// The trial offer, shown right after the user has felt the speed. Free stays one quiet click away:
@@ -625,7 +766,7 @@ private struct PaywallStep: View {
 
     private var licenseEntry: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Finish checkout in your browser. Your license key arrives by email; copy it and come back. \(Brand.name) picks it up automatically.")
+            Text("Finish checkout in your browser. Pro turns on here by itself once it goes through. If it doesn't, paste the license key from your email.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
                 TextField("OPENNOTCH-…", text: $license)

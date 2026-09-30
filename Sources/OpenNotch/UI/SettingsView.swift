@@ -22,8 +22,18 @@ private struct GeneralTab: View {
     @AppStorage(Pref.vocabulary) private var vocabulary = ""
     @AppStorage(Pref.searchURL) private var searchURL = "https://www.google.com/search?q=%s"
 
+    @ObservedObject private var account = Account.shared
+
     var body: some View {
         Form {
+            Section("Account") {
+                if let email = account.email {
+                    LabeledContent("Signed in as", value: email)
+                    Button("Sign Out") { account.signOut() }
+                } else {
+                    Button("Sign In…") { Onboarding.shared.showAccount() }
+                }
+            }
             Section("Hold to talk") {
                 Picker("Dictate", selection: $dictationKey) {
                     ForEach(TriggerKey.allCases) { Text($0.label).tag($0.rawValue) }

@@ -12,6 +12,9 @@ enum Main {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// opennotch://activate?key=OPENNOTCH-… activates Pro in one click (from the thank-you page or email).
     func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls where url.scheme == "opennotch" && url.host == "auth-callback" {
+            MainActor.assumeIsolated { Account.shared.handle(url) }
+        }
         for url in urls where url.scheme == "opennotch" && url.host == "activate" {
             guard let key = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                 .queryItems?.first(where: { $0.name == "key" })?.value else { continue }
@@ -23,7 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated {
             AppController.shared.bootstrap()
             _ = Updater.shared
-            Task { await Pro.shared.refresh() }
+            Task {
+                await Pro.shared.refresh()
+                await Account.shared.linkPro()
+            }
             Timer.scheduledTimer(withTimeInterval: 86_400, repeats: true) { _ in
                 Task { @MainActor in await Pro.shared.refresh() }
             }
@@ -47,13 +53,19 @@ struct OpenNotchApp: App {
 private struct MenuContent: View {
     @ObservedObject var controller: AppController
     @ObservedObject private var pro = Pro.shared
+    @ObservedObject private var account = Account.shared
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
+        if let email = account.email {
+            Text("Signed in as \(email)")
+        } else {
+            Button("Sign In…") { Onboarding.shared.showAccount() }
+        }
         if pro.status != .active {
             Button("Upgrade to Pro — 7 days free…") { pro.openCheckout(yearly: true) }
-            Divider()
         }
+        Divider()
         Text(controller.statusLine)
         Text("Speech: \(Speech.engineName)")
         Text("Decisions: \(Deciders.current().name)")

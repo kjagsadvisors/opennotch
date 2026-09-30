@@ -89,9 +89,32 @@ final class Pro: ObservableObject {
         setActive(false)
     }
 
+    /// Checkout is prefilled with the account's email, so the purchase lands on this account and
+    /// Pro turns on here by itself. The emailed key still works as a fallback.
     func openCheckout(yearly: Bool) {
-        NSWorkspace.shared.open(yearly ? ProConfig.yearlyCheckout : ProConfig.monthlyCheckout)
+        var c = URLComponents(url: yearly ? ProConfig.yearlyCheckout : ProConfig.monthlyCheckout, resolvingAgainstBaseURL: false)!
+        if let email = Account.email {
+            c.queryItems = [URLQueryItem(name: "customer_email", value: email)]
+            if let id = Account.userID { c.queryItems?.append(URLQueryItem(name: "reference_id", value: id)) }
+        }
+        NSWorkspace.shared.open(c.url!)
         watchClipboardForLicense()
+        watchAccountForPurchase()
+    }
+
+    private var accountTimer: Timer?
+
+    /// Checks the account every few seconds for 30 minutes after checkout opens.
+    private func watchAccountForPurchase() {
+        accountTimer?.invalidate()
+        guard Account.isSignedIn else { return }
+        let until = Date().addingTimeInterval(30 * 60)
+        accountTimer = Timer.scheduledTimer(withTimeInterval: 6, repeats: true) { [weak self] timer in
+            Task { @MainActor in
+                guard let self, Date() < until, self.status != .active else { return timer.invalidate() }
+                await Account.shared.linkPro()
+            }
+        }
     }
 
     private var clipboardTimer: Timer?

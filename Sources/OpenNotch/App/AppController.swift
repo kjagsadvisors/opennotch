@@ -139,6 +139,13 @@ final class AppController: ObservableObject, AgentPresenter {
 
     private func begin(_ mode: Mode) {
         guard sessionMode == nil else { return }
+        // An account is required, but onboarding lets people try dictation and a command first.
+        guard Account.isSignedIn || Onboarding.shared.isOpen else {
+            flash("Sign in to keep using \(Brand.name)", detail: "Click to sign in", icon: "person.crop.circle", seconds: 4) {
+                Onboarding.shared.showAccount()
+            }
+            return
+        }
         if pending != nil { dismissConfirm() }
         guard speechReady, let format = Speech.audioFormat else {
             flash(speechReady ? "Microphone unavailable" : "Speech model still loading…", icon: "hourglass", seconds: 2)
