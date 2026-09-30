@@ -10,6 +10,9 @@ permissions:
 
 jobs:
   release:
+    # Off until the secrets below are configured (docs/RELEASING.md); until then releases are cut
+    # from a Mac with scripts/release.sh. Turn on with repository variable CI_RELEASES=true.
+    if: vars.CI_RELEASES == 'true'
     runs-on: macos-26
     env:
       VERSION: ${{ github.ref_name }}

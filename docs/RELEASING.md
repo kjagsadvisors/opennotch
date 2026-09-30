@@ -96,7 +96,13 @@ gh release create v0.2.0 dist/OpenNotch-0.2.0.dmg dist/appcast.xml --generate-no
 | `APPLE_API_ISSUER_ID` | The issuer ID shown on the same page |
 | `SPARKLE_PRIVATE_KEY` | Contents of the file from `generate_keys -x` |
 
-Then:
+Then turn CI releases on (they're skipped until this variable exists):
+
+```bash
+gh variable set CI_RELEASES --body true
+```
+
+and release with:
 
 ```bash
 git tag v0.2.0 && git push origin v0.2.0
