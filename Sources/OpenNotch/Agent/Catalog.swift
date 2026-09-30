@@ -27,7 +27,7 @@ enum Intent: String, CaseIterable {
         case .rewrite: return "Transform the currently selected text: rewrite, rephrase, fix grammar, translate, shorten, summarize, change tone"
         case .searchWeb: return "Search the web or look something up online"
         case .openURL: return "Go to a specific website or web address"
-        case .system: return "Change a system setting or do a system action: volume, mute, dark mode, lock screen, sleep display, screenshot, Mission Control"
+        case .system: return "Change a system setting or do a system action: play or pause music, next or previous song, volume, mute, dark mode, lock screen, sleep display, screenshot, Mission Control"
         case .ask: return "A question to answer or explain in words, with no action taken on the computer"
         case .multiStep: return "A task that needs several steps or more than one app, e.g. open Safari and go to github.com"
         case .fillForm: return "Fill in the form on screen using text the user copied (like a resume) or details they give"
