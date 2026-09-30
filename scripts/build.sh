@@ -47,6 +47,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Framewor
 cp "$BIN" "$APP/Contents/MacOS/OpenNotch"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/"
+[[ -d "$ROOT/Resources/Narration" ]] && ditto "$ROOT/Resources/Narration" "$APP/Contents/Resources/Narration"
 for fw in ${FRAMEWORKS[@]+"${FRAMEWORKS[@]}"}; do ditto "$fw" "$APP/Contents/Frameworks/$(basename "$fw")"; done
 for b in ${BUNDLES[@]+"${BUNDLES[@]}"}; do ditto "$b" "$APP/Contents/Resources/$(basename "$b")"; done
 

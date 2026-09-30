@@ -35,7 +35,7 @@ final class Onboarding: ObservableObject {
     private var window: NSWindow?
     private var guide: NSPanel?
     private var pollTimer: Timer?
-    private let synth = AVSpeechSynthesizer()
+    private var narrator: AVAudioPlayer?
 
     static var isComplete: Bool { UserDefaults.standard.bool(forKey: "onboardingComplete") }
 
@@ -78,19 +78,19 @@ final class Onboarding: ObservableObject {
         NSApp.activate()
         NSAnimationContext.runAnimationGroup { $0.duration = 0.6; o.animator().alphaValue = 1 }
         overlay = o
-        say("Welcome to \(Brand.name).")
+        say("welcome")
     }
 
     func beginNameEntry() {
         introPhase = .name
-        say("I'm your voice for this Mac. What should I call you?")
+        say("askName")
     }
 
     func submitName() {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         UserDefaults.standard.set(trimmed, forKey: "userFirstName")
         introPhase = .greeting
-        say("Hi \(displayName), it's great to meet you.")
+        say("greeting")
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) { [weak self] in self?.finishIntro() }
     }
 
@@ -218,38 +218,25 @@ final class Onboarding: ObservableObject {
 
     private func announce() {
         switch step {
-        case .permissions: say("First, a few permissions. I only listen while you hold your key.")
-        case .keyCheck: say("Let's check your talk keys. Hold each one down.")
-        case .dictationIntro: say("Dictation. Talk naturally, and I'll clean up the ums and the corrections.")
-        case .tryDictation: say("Your turn. Hold the key, read the message out loud, then let go.")
-        case .speed:
-            if let m = AppController.shared.lastDictation?.speedup { say("You just spoke \(m) times faster than typing.") }
-        case .command: say("Commands. Hold the right option key and tell your Mac what to do.")
-        case .account: say("Last step. Create your free account so \(Brand.name) knows it's you.")
-        case .paywall: say("One more thing. Try Pro free for seven days, and I'll clean up everything you say.")
-        case .done: say("You're all set, \(displayName).")
+        case .speed: if AppController.shared.lastDictation?.speedup != nil { say("speed") }
+        case .done: say("done")
+        default: say("\(step)")
         }
     }
 
-    func say(_ text: String) {
-        guard narrationOn, !previewMode else { return }
-        synth.stopSpeaking(at: .immediate)
-        let u = AVSpeechUtterance(string: text)
-        u.voice = Self.bestVoice
-        u.rate = 0.5
-        synth.speak(u)
+    /// Plays a recorded narration line (Resources/Narration/<id>.m4a, made by scripts/make-narration.sh
+    /// with the open-source Kokoro voice). Missing clips are simply skipped.
+    func say(_ clip: String) {
+        guard narrationOn, !previewMode,
+              let url = Bundle.main.url(forResource: clip, withExtension: "m4a", subdirectory: "Narration") else { return }
+        narrator?.stop()
+        narrator = try? AVAudioPlayer(contentsOf: url)
+        narrator?.play()
     }
 
     func stopNarration() {
-        synth.stopSpeaking(at: .immediate)
+        narrator?.stop()
     }
-
-    private static let bestVoice: AVSpeechSynthesisVoice? = {
-        let lang = Locale.current.language.languageCode?.identifier ?? "en"
-        return AVSpeechSynthesisVoice.speechVoices()
-            .filter { $0.language.hasPrefix(lang) }
-            .max { $0.quality.rawValue < $1.quality.rawValue }
-    }()
 }
 
 /// Borderless windows can't take keyboard focus by default; the intro needs a text field.
