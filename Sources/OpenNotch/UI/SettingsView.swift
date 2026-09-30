@@ -18,7 +18,7 @@ private struct GeneralTab: View {
     @AppStorage(Pref.dictationKey) private var dictationKey = TriggerKey.fn.rawValue
     @AppStorage(Pref.commandKey) private var commandKey = TriggerKey.optionCommand.rawValue
     @AppStorage(Pref.polishEnabled) private var polish = true
-    @AppStorage(Pref.autoRunConfidence) private var autoRun = 0.8
+    @AppStorage(Pref.autoRunConfidence) private var autoRun = 0.4
     @AppStorage(Pref.vocabulary) private var vocabulary = ""
     @AppStorage(Pref.searchURL) private var searchURL = "https://www.google.com/search?q=%s"
 
@@ -51,7 +51,7 @@ private struct GeneralTab: View {
             }
             UpdatesSection()
             Section("Commands") {
-                Slider(value: $autoRun, in: 0.5...1.0, step: 0.05) {
+                Slider(value: $autoRun, in: 0.2...1.0, step: 0.05) {
                     Text("Ask before running below \(Int(autoRun * 100))% confidence")
                 }
                 TextField("Search URL (%s = query)", text: $searchURL)

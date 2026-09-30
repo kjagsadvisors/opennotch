@@ -17,7 +17,7 @@ struct PlannedAction {
 
     var needsConfirmation: Bool {
         if risky { return true }
-        return confidence < (harmless ? 0.45 : Pref.double(Pref.autoRunConfidence))
+        return confidence < (harmless ? 0.3 : Pref.double(Pref.autoRunConfidence))
     }
 
     func markedHarmless() -> PlannedAction {

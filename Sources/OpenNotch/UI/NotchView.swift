@@ -21,7 +21,7 @@ struct NotchView: View {
     private var expanded: Bool {
         switch state.phase {
         case .message, .confirm: return true
-        case .listening: return !state.transcript.isEmpty
+        case .listening: return !state.transcript.isEmpty || state.handsFree
         default: return false
         }
     }
@@ -30,7 +30,7 @@ struct NotchView: View {
         let compact = state.notchSize.width + side * 2
         switch state.phase {
         case .hidden: return state.notchSize.width
-        case .listening: return state.transcript.isEmpty ? compact : max(compact, 420)
+        case .listening: return state.transcript.isEmpty && !state.handsFree ? compact : max(compact, 420)
         case .working: return compact
         case .message, .confirm: return max(compact, 460)
         }
@@ -63,7 +63,7 @@ struct NotchView: View {
     @ViewBuilder private var leading: some View {
         switch state.phase {
         case .listening:
-            Image(systemName: state.mode == .dictation ? "mic.fill" : "sparkles")
+            Image(systemName: state.handsFree ? "lock.fill" : state.mode == .dictation ? "mic.fill" : "sparkles")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(accent)
         case .working:
@@ -89,9 +89,9 @@ struct NotchView: View {
     @ViewBuilder private var content: some View {
         switch state.phase {
         case .listening:
-            Text(state.transcript)
+            Text(state.transcript.isEmpty ? "Hands-free. Tap \(TriggerKey.current(state.mode).capLabel) when you're done." : state.transcript)
                 .font(.system(size: 13))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(.white.opacity(state.transcript.isEmpty ? 0.6 : 0.85))
                 .lineLimit(3)
                 .truncationMode(.head)
                 .frame(maxWidth: .infinity, alignment: .leading)

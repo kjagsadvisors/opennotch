@@ -55,6 +55,8 @@ final class KeyboardTap {
     var onRelease: ((Mode) -> Void)?
     /// A non-trigger key went down mid-hold: the trigger was part of a shortcut, not a hold-to-talk.
     var onChord: (() -> Void)?
+    /// A double-tap of a one-key trigger: keep listening after the key comes up, until it's tapped again.
+    var onLatch: ((Mode) -> Void)?
     var onEscape: (() -> Void)?
     var onReturn: (() -> Void)?
 
@@ -67,6 +69,10 @@ final class KeyboardTap {
     private var down: Set<Int64> = []
     /// A two-key trigger waiting a beat, so ⌥⌘ shortcuts (⌥⌘H, ⌥⌘V…) don't flash the notch.
     private var pendingChord: DispatchWorkItem?
+    private var pressedAt = Date.distantPast
+    private var lastTap: (mode: Mode, at: Date)?
+    private var latched: Mode?
+    private var ignoreNextRelease: Mode?
 
     var isRunning: Bool { tap != nil }
 
@@ -92,6 +98,14 @@ final class KeyboardTap {
         return true
     }
 
+    /// Listening was cancelled some other way (Esc, a shortcut): forget any hands-free latch.
+    func resetHold() {
+        latched = nil
+        held = nil
+        ignoreNextRelease = nil
+        cancelPendingChord()
+    }
+
     private func cancelPendingChord() {
         pendingChord?.cancel()
         pendingChord = nil
@@ -114,10 +128,22 @@ final class KeyboardTap {
             for mode in [Mode.dictation, .command] {
                 let key = trigger(for: mode)
                 let isDown = key.keyCodes.isSubset(of: down)
-                if isDown, held == nil, pendingChord == nil, key.keyCodes.contains(code) {
+                if isDown, latched == mode, key.keyCodes.contains(code) {
+                    // Hands-free: the next tap finishes.
+                    latched = nil
+                    held = nil
+                    ignoreNextRelease = mode
+                    onRelease?(mode)
+                } else if isDown, held == nil, pendingChord == nil, key.keyCodes.contains(code) {
                     if key.keyCodes.count == 1 {
                         held = mode
+                        pressedAt = Date()
                         onPress?(mode)
+                        if let tap = lastTap, tap.mode == mode, Date().timeIntervalSince(tap.at) < 0.4 {
+                            lastTap = nil
+                            latched = mode
+                            onLatch?(mode)
+                        }
                     } else {
                         let start = DispatchWorkItem { [weak self] in
                             guard let self, self.pendingChord != nil else { return }
@@ -130,8 +156,12 @@ final class KeyboardTap {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: start)
                     }
                 } else if !isDown {
-                    if held == mode {
+                    if ignoreNextRelease == mode, key.keyCodes.contains(code) {
+                        ignoreNextRelease = nil
+                    } else if held == mode, latched != mode {
                         held = nil
+                        // A quick tap (the controller ignores it) might be the first half of a double-tap.
+                        if Date().timeIntervalSince(pressedAt) < 0.25 { lastTap = (mode, Date()) }
                         onRelease?(mode)
                     }
                     if key.keyCodes.contains(code) { cancelPendingChord() }
@@ -152,6 +182,7 @@ final class KeyboardTap {
             cancelPendingChord()
             if held != nil {
                 held = nil
+                latched = nil
                 onChord?()
             }
             return Unmanaged.passUnretained(event)

@@ -131,6 +131,7 @@ final class AppController: ObservableObject, AgentPresenter {
         keys.onPress = { [weak self] mode in Task { @MainActor in self?.begin(mode) } }
         keys.onRelease = { [weak self] mode in Task { @MainActor in self?.end(mode) } }
         keys.onChord = { [weak self] in Task { @MainActor in self?.cancelListening() } }
+        keys.onLatch = { [weak self] _ in Task { @MainActor in self?.notch.handsFree = true } }
         keys.onEscape = { [weak self] in Task { @MainActor in self?.escape() } }
         keys.onReturn = { [weak self] in Task { @MainActor in self?.confirmPending() } }
     }
@@ -207,6 +208,7 @@ final class AppController: ObservableObject, AgentPresenter {
         transcriber = nil
         keys.captureEscape = false
         notch.level = 0
+        notch.handsFree = false
         notch.phase = .working
         notch.title = "Listening"
 
@@ -249,6 +251,8 @@ final class AppController: ObservableObject, AgentPresenter {
         contextTask?.cancel()
         contextTask = nil
         keys.captureEscape = false
+        keys.resetHold()
+        notch.handsFree = false
         hide()
     }
 

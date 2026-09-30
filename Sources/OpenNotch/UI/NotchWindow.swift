@@ -14,6 +14,8 @@ final class NotchState: ObservableObject {
     @Published var phase: Phase = .hidden
     @Published var mode: Mode = .dictation
     @Published var transcript = ""
+    /// Double-tapped: listening continues without holding the key.
+    @Published var handsFree = false
     @Published var level: Float = 0
     @Published var title = ""
     @Published var detail: String?

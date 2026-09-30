@@ -33,7 +33,7 @@ enum Pref {
             openAIBaseURL: "http://localhost:11434/v1",
             openAIModel: "llama3.2",
             vocabulary: "",
-            autoRunConfidence: 0.8,
+            autoRunConfidence: 0.4,
             searchURL: "https://www.google.com/search?q=%s",
             parakeetModel: "ultra",
             cleanupProvider: "auto",
