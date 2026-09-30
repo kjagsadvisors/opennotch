@@ -1,6 +1,7 @@
-// Renders the disk image window background (Resources/dmg-background.png and @2x): a title, an
-// arrow from the app to Applications, and the one-line instructions. Icons sit at x=165 and x=495,
-// y=190 (from the top) in a 660×400 window; scripts/dmg-settings.py places them there.
+// Renders the disk image window background (Resources/dmg-background.png and @2x): a title and the
+// one-line instruction above a single app icon at x=330, y=190 (from the top) in a 660×400 window;
+// scripts/dmg-settings.py places it there. There's deliberately no Applications folder to drag onto:
+// macOS never opens an app after a drag, but double-clicking installs it and opens it (Installer.swift).
 // Usage: swiftc scripts/make-dmg-background.swift -o /tmp/make-dmg-bg && /tmp/make-dmg-bg <repo root>
 import AppKit
 
@@ -32,27 +33,8 @@ func render(scale: CGFloat) -> Data {
     // Everything important sits in the top two-thirds: on macOS 26, Finder draws its toolbar and
     // path bar inside disk image windows, which covers the bottom of the picture.
     text("Install OpenNotch", size: 24, weight: .semibold, color: NSColor(white: 0.1, alpha: 1), top: 46)
-    text("Double-click OpenNotch, or drag it to Applications.", size: 14, weight: .regular,
+    text("Double-click OpenNotch to install it.", size: 14, weight: .regular,
          color: NSColor(white: 0.35, alpha: 1), top: 80)
-
-    // Arrow from the app icon to the Applications folder.
-    let accent = NSColor(red: 0.16, green: 0.40, blue: 0.95, alpha: 1)
-    let start = NSPoint(x: 250 * u, y: y(186)), end = NSPoint(x: 410 * u, y: y(186))
-    let shaft = NSBezierPath()
-    shaft.move(to: start)
-    shaft.line(to: NSPoint(x: end.x - 14 * u, y: end.y))
-    shaft.lineWidth = 6 * u
-    shaft.lineCapStyle = .round
-    accent.withAlphaComponent(0.85).setStroke()
-    shaft.stroke()
-    let head = NSBezierPath()
-    head.move(to: NSPoint(x: end.x + 4 * u, y: end.y))
-    head.line(to: NSPoint(x: end.x - 20 * u, y: end.y + 16 * u))
-    head.line(to: NSPoint(x: end.x - 20 * u, y: end.y - 16 * u))
-    head.close()
-    accent.withAlphaComponent(0.85).setFill()
-    head.fill()
-
 
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [.compressionFactor: 1.0])!

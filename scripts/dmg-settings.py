@@ -8,13 +8,15 @@ name = os.path.basename(app)
 
 format = "UDZO"
 files = [app]
-symlinks = {"Applications": "/Applications"}
+# No Applications shortcut on purpose: double-clicking the app installs and opens it (Installer.swift),
+# while a drag into Applications would leave it closed.
+symlinks = {}
 
-# Matches scripts/make-dmg-background.swift: icons centred at x=165/495, y=190 in a 660x400 window.
+# Matches scripts/make-dmg-background.swift: the icon centred at x=330, y=190 in a 660x400 window.
 background = defines["background"]
 window_rect = ((200, 140), (660, 400))
-icon_locations = {name: (165, 190), "Applications": (495, 190)}
-icon_size = 112
+icon_locations = {name: (330, 190)}
+icon_size = 128
 text_size = 13
 default_view = "icon-view"
 show_status_bar = False
